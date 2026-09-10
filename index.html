@@ -30,19 +30,6 @@
   <body class="locked">
     <canvas id="confetti" aria-hidden="true"></canvas>
 
-    <svg class="svg-defs" aria-hidden="true" focusable="false">
-      <defs>
-        <pattern id="wave" width="26" height="26" patternUnits="userSpaceOnUse">
-          <path
-            d="M0 13 q6.5 -6 13 0 t13 0"
-            fill="none"
-            stroke="rgba(23,165,161,.22)"
-            stroke-width="1"
-          ></path>
-        </pattern>
-      </defs>
-    </svg>
-
     <!-- ============================================================
      FASE 1 — SECUENCIA BLOQUEADA
      ============================================================ -->
@@ -155,11 +142,12 @@
           </div>
           <div class="col-media">
             <div class="map-frame">
-              <svg
-                id="mapCo"
+              <svg id="mapCo"
                 viewBox="0 0 420 600"
                 role="img"
                 aria-label="Mapa de la ruta aérea Bogotá – destino clasificado"
+                width="420"
+                height="600"
               >
                 <path id="coOutline" class="co-outline" d=""></path>
                 <path id="coRoute" class="co-route" d=""></path>
@@ -222,19 +210,25 @@
           </div>
           <div class="col-media">
             <div class="map-frame">
-              <svg
-                id="mapCity"
+              <svg id="mapCity"
                 viewBox="0 0 420 460"
                 role="img"
                 aria-label="Mapa de los puntos de interés en el destino"
+                width="420"
+                height="460"
               >
+                <defs>
+                  <pattern id="waveCity" width="26" height="26" patternUnits="userSpaceOnUse">
+                    <path d="M0 13 q6.5 -6 13 0 t13 0" fill="none" stroke="rgba(23,165,161,.22)" stroke-width="1"></path>
+                  </pattern>
+                </defs>
                 <rect class="sea" x="0" y="0" width="420" height="460"></rect>
                 <rect
                   x="0"
                   y="0"
                   width="420"
                   height="460"
-                  fill="url(#wave)"
+                  fill="url(#waveCity)"
                 ></rect>
                 <path
                   class="land"
@@ -463,18 +457,24 @@
             <h2>El recorrido</h2>
           </div>
           <div class="map-frame static">
-            <svg
-              viewBox="0 0 420 460"
+            <svg viewBox="0 0 420 460"
               role="img"
               aria-label="Mapa de Cartagena con los cuatro puntos del recorrido"
-            >
+            width="420"
+            height="460"
+          >
+          <defs>
+                  <pattern id="waveStatic" width="26" height="26" patternUnits="userSpaceOnUse">
+                    <path d="M0 13 q6.5 -6 13 0 t13 0" fill="none" stroke="rgba(23,165,161,.22)" stroke-width="1"></path>
+                  </pattern>
+                </defs>
               <rect class="sea" x="0" y="0" width="420" height="460"></rect>
               <rect
                 x="0"
                 y="0"
                 width="420"
                 height="460"
-                fill="url(#wave)"
+                fill="url(#waveStatic)"
               ></rect>
               <path
                 class="land"
