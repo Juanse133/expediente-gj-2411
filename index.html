@@ -1,0 +1,762 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Expediente GJ-2411</title>
+    <meta
+      name="description"
+      content="Expediente clasificado. Nivel de acceso máximo."
+    />
+    <meta name="theme-color" content="#0C0B0A" />
+    <meta property="og:title" content="Expediente GJ-2411" />
+    <meta property="og:description" content="Clasificado. No difundir." />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕵️</text></svg>"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preload" as="image" href="assets/img/evidencia-01.jpg" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&display=swap"
+    />
+    <link rel="stylesheet" href="assets/css/style.css" />
+  </head>
+  <body class="locked">
+    <canvas id="confetti" aria-hidden="true"></canvas>
+
+    <svg class="svg-defs" aria-hidden="true" focusable="false">
+      <defs>
+        <pattern id="wave" width="26" height="26" patternUnits="userSpaceOnUse">
+          <path
+            d="M0 13 q6.5 -6 13 0 t13 0"
+            fill="none"
+            stroke="rgba(23,165,161,.22)"
+            stroke-width="1"
+          ></path>
+        </pattern>
+      </defs>
+    </svg>
+
+    <!-- ============================================================
+     FASE 1 — SECUENCIA BLOQUEADA
+     ============================================================ -->
+    <div id="sequence" class="sequence">
+      <div class="seq-rail" aria-hidden="true"><span id="railFill"></span></div>
+      <div class="seq-count" id="seqCount">00 / 04</div>
+
+      <!-- ---------- ETAPA 0 · ACCESO ---------- -->
+      <section class="stage is-active" data-stage="0">
+        <div class="stage-inner terminal-wrap">
+          <pre class="terminal" id="terminal" aria-live="polite"></pre>
+          <button class="btn is-hidden" data-next id="btnStart">
+            Abrir expediente
+          </button>
+        </div>
+      </section>
+
+      <!-- ---------- ETAPA 1 · VIGILANCIA ---------- -->
+      <section class="stage" data-stage="1">
+        <div class="stage-inner cols">
+          <div class="col-text">
+            <span class="eyebrow">Informe 01 · Vigilancia</span>
+            <h2>Alguien te ha estado observando</h2>
+            <p>
+              Sujeto femenino bajo observación continua desde hace
+              <span
+                class="redact"
+                tabindex="0"
+                role="button"
+                aria-label="Revelar dato clasificado"
+                >un año</span
+              >. Se le ha visto reír sin motivo aparente, siempre en compañía
+              del mismo civil.
+            </p>
+            <p>
+              El civil en cuestión responde al nombre de
+              <span
+                class="redact"
+                tabindex="0"
+                role="button"
+                aria-label="Revelar dato clasificado"
+                >Juan Sebastián</span
+              >
+              y lleva semanas comportándose de forma sospechosa: llamadas en voz
+              baja, pestañas cerradas de golpe, sonrisas fuera de lugar.
+            </p>
+            <p class="muted">
+              Se adjunta evidencia fotográfica recuperada del archivo.
+            </p>
+            <p class="hint" data-hint>
+              Toque las barras negras para desclasificar.
+            </p>
+            <button class="btn" data-next disabled>Siguiente informe</button>
+          </div>
+          <div class="col-media">
+            <figure class="polaroid tilt-a" data-develop>
+              <img
+                src="assets/img/evidencia-01.jpg"
+                alt="Evidencia fotográfica 01"
+                width="1200"
+                height="1200"
+                decoding="async"
+                fetchpriority="high"
+              />
+              <figcaption>EVID-01 · sin fecha</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------- ETAPA 2 · TRÁNSITO ---------- -->
+      <section class="stage" data-stage="2">
+        <div class="stage-inner cols">
+          <div class="col-text">
+            <span class="eyebrow">Informe 02 · Tránsito</span>
+            <h2>Dos pasajes ya emitidos</h2>
+            <p>
+              Se detectó la compra de dos pasajes aéreos a nombre de ambos
+              sujetos. Fecha del desplazamiento:
+              <span
+                class="redact"
+                tabindex="0"
+                role="button"
+                aria-label="Revelar dato clasificado"
+                >24 de noviembre</span
+              >, hora de salida 06:30.
+            </p>
+            <p>
+              Origen confirmado: Bogotá, El Dorado. Rumbo: norte. Duración
+              estimada del vuelo:
+              <span
+                class="redact"
+                tabindex="0"
+                role="button"
+                aria-label="Revelar dato clasificado"
+                >1 h 32 min</span
+              >.
+            </p>
+            <p>
+              Destino:
+              <b class="blackbar" aria-label="Destino clasificado"
+                >███████████</b
+              >. Clasificado hasta nueva orden.
+            </p>
+            <p class="muted">Se adjunta trazado de la ruta interceptada.</p>
+            <p class="hint" data-hint>
+              Toque las barras negras para desclasificar.
+            </p>
+            <button class="btn" data-next disabled>Rastrear destino</button>
+          </div>
+          <div class="col-media">
+            <div class="map-frame">
+              <svg
+                id="mapCo"
+                viewBox="0 0 420 600"
+                role="img"
+                aria-label="Mapa de la ruta aérea Bogotá – destino clasificado"
+              >
+                <path id="coOutline" class="co-outline" d=""></path>
+                <path id="coRoute" class="co-route" d=""></path>
+                <g id="coPoints"></g>
+                <g id="coPlane" class="co-plane">
+                  <path
+                    d="M0,-9 L2.6,-2.4 L11,0 L2.6,2.4 L0,9 L-2,2.4 L-11,0 L-2,-2.4 Z"
+                  ></path>
+                </g>
+              </svg>
+              <div class="map-legend">
+                <span>BOG</span><span class="dash"></span
+                ><span class="cls">█████</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------- ETAPA 3 · COORDENADAS ---------- -->
+      <section class="stage" data-stage="3">
+        <div class="stage-inner cols">
+          <div class="col-text">
+            <span class="eyebrow">Informe 03 · Coordenadas</span>
+            <h2>Cuatro puntos de interés</h2>
+            <p>
+              El destino registra cuatro movimientos ya programados. Ninguno
+              figura con nombre en el expediente.
+            </p>
+            <ol class="points" id="pointList">
+              <li data-point="1">
+                <span class="idx">01</span
+                ><span class="txt"
+                  >Embarcación al atardecer. Bahía abierta. Dos horas.</span
+                >
+              </li>
+              <li data-point="2">
+                <span class="idx">02</span
+                ><span class="txt"
+                  >Fortaleza de piedra, siglo XVII. Calles empedradas
+                  alrededor.</span
+                >
+              </li>
+              <li data-point="3">
+                <span class="idx">03</span
+                ><span class="txt"
+                  >Archipiélago. Ocho horas. Agua transparente.</span
+                >
+              </li>
+              <li data-point="4">
+                <span class="idx">04</span
+                ><span class="txt"
+                  >Sin instrucciones. Día completo. A propósito.</span
+                >
+              </li>
+            </ol>
+            <button class="btn" data-next disabled>
+              Desclasificar destino
+            </button>
+          </div>
+          <div class="col-media">
+            <div class="map-frame">
+              <svg
+                id="mapCity"
+                viewBox="0 0 420 460"
+                role="img"
+                aria-label="Mapa de los puntos de interés en el destino"
+              >
+                <rect class="sea" x="0" y="0" width="420" height="460"></rect>
+                <rect
+                  x="0"
+                  y="0"
+                  width="420"
+                  height="460"
+                  fill="url(#wave)"
+                ></rect>
+                <path
+                  class="land"
+                  d="M256 -10 L430 -10 L430 470 L336 470 Q312 410 318 352 Q326 300 340 262 Q348 224 330 196 Q312 172 286 166 Q268 150 262 120 Q252 80 258 30 Z"
+                ></path>
+                <path
+                  class="land spit"
+                  d="M262 132 Q240 168 220 208 Q208 238 202 268 L218 276 Q226 242 238 214 Q256 176 276 144 Z"
+                ></path>
+                <path
+                  class="land"
+                  d="M196 280 q40 4 46 40 q6 36 -30 50 q-38 14 -56 -16 q-16 -28 6 -52 q14 -20 34 -22 Z"
+                ></path>
+                <path
+                  class="land islet"
+                  d="M58 384 q26 -14 46 0 q16 12 0 26 q-22 16 -46 4 q-16 -10 0 -30 Z"
+                ></path>
+                <path
+                  class="land islet"
+                  d="M108 418 q20 -10 34 2 q12 10 -2 20 q-18 12 -34 2 q-12 -8 2 -24 Z"
+                ></path>
+                <path
+                  class="land islet"
+                  d="M38 432 q14 -8 24 0 q8 8 -4 14 q-14 6 -22 -2 Z"
+                ></path>
+                <g id="cityPins"></g>
+              </svg>
+              <div class="map-legend">
+                <span class="cls">Coordenadas restringidas</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------- ETAPA 4 · REVELACIÓN ---------- -->
+      <section class="stage stage-reveal" data-stage="4">
+        <div class="stage-inner reveal-inner">
+          <span class="stamp-open">Desclasificado</span>
+          <h1 class="dest" id="destWord" aria-label="Cartagena">
+            <span>C</span><span>A</span><span>R</span><span>T</span
+            ><span>A</span><span>G</span><span>E</span><span>N</span
+            ><span>A</span>
+          </h1>
+          <p class="dest-dates">24 — 28 · noviembre · 2026</p>
+          <p class="dest-sub">
+            Cinco días. Todo pago. Nada por hacer más que llegar.
+          </p>
+          <button class="btn" id="btnOpenDossier">
+            Ver el expediente completo
+          </button>
+        </div>
+      </section>
+
+      <button class="skip" id="btnSkip" title="Saltar la secuencia">
+        saltar ▸
+      </button>
+    </div>
+
+    <!-- ============================================================
+     FASE 2 — EXPEDIENTE COMPLETO
+     ============================================================ -->
+    <main id="dossier" class="dossier" hidden>
+      <div class="page">
+        <header class="dossier-head">
+          <div class="filebar">
+            <span class="eyebrow"
+              >Expediente N.º GJ-2411 · Nivel de acceso: Laura</span
+            >
+            <span class="stamp open">Desclasificado</span>
+          </div>
+          <h1 class="title">Operación Cartagena</h1>
+          <p class="lede">
+            Cinco días en la costa, del 24 al 28 de noviembre de 2026. Vuelos,
+            hotel, traslados y todos los recorridos ya están confirmados y
+            pagos.
+          </p>
+        </header>
+
+        <div class="clock">
+          <span class="eyebrow">Tiempo restante para el despegue</span>
+          <div class="clock-grid">
+            <div class="tick"><b id="cd-d">—</b><span>Días</span></div>
+            <div class="tick"><b id="cd-h">—</b><span>Horas</span></div>
+            <div class="tick"><b id="cd-m">—</b><span>Minutos</span></div>
+            <div class="tick"><b id="cd-s">—</b><span>Segundos</span></div>
+          </div>
+          <span class="eyebrow" id="clockNote"
+            >Objetivo: 24 de noviembre de 2026, 06:30 · El Dorado</span
+          >
+        </div>
+
+        <section>
+          <div class="sec-head">
+            <span class="eyebrow">Anexo A</span>
+            <h2>Sujetos implicados</h2>
+          </div>
+          <div class="subjects">
+            <article class="subject">
+              <div class="mug" data-develop>
+                <img
+                  src="assets/img/sujeto-01.jpg"
+                  alt="Sujeto 01"
+                  width="900"
+                  height="1200"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </div>
+              <dl>
+                <dt>Sujeto 01</dt>
+                <dd><strong>Juan Sebastián</strong></dd>
+                <dt>Rol</dt>
+                <dd>Planeó todo esto en silencio durante semanas.</dd>
+              </dl>
+            </article>
+            <article class="subject">
+              <div class="mug" data-develop>
+                <img
+                  src="assets/img/sujeto-02.jpg"
+                  alt="Sujeto 02"
+                  width="900"
+                  height="1200"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </div>
+              <dl>
+                <dt>Sujeto 02</dt>
+                <dd><strong>Laura Valentina</strong></dd>
+                <dt>Rol</dt>
+                <dd>Acaba de enterarse. Hace treinta segundos.</dd>
+              </dl>
+            </article>
+          </div>
+        </section>
+
+        <section>
+          <div class="sec-head">
+            <span class="eyebrow">Anexo B · Evidencia</span>
+            <h2>Traslados aéreos</h2>
+          </div>
+          <div class="passes">
+            <article class="pass">
+              <div class="pass-main">
+                <div class="pass-top">
+                  <span class="airline">Wingo · P5 7216</span
+                  ><span class="airline">24 NOV 2026</span>
+                </div>
+                <div class="route">
+                  <span class="iata">BOG</span><span class="arrow"></span
+                  ><span class="iata">CTG</span>
+                </div>
+                <div class="pass-data">
+                  <div>
+                    <div class="k">Sale</div>
+                    <div class="v">06:30</div>
+                  </div>
+                  <div>
+                    <div class="k">Llega</div>
+                    <div class="v">08:02</div>
+                  </div>
+                  <div>
+                    <div class="k">Pasajeros</div>
+                    <div class="v">2</div>
+                  </div>
+                  <div>
+                    <div class="k">Estado</div>
+                    <div class="v">Emitido</div>
+                  </div>
+                </div>
+              </div>
+              <div class="stub">
+                <div class="barcode" aria-hidden="true"></div>
+                <div class="seat">Ida</div>
+              </div>
+            </article>
+
+            <article class="pass">
+              <div class="pass-main">
+                <div class="pass-top">
+                  <span class="airline">Wingo · P5 7229</span
+                  ><span class="airline">28 NOV 2026</span>
+                </div>
+                <div class="route">
+                  <span class="iata">CTG</span><span class="arrow"></span
+                  ><span class="iata">BOG</span>
+                </div>
+                <div class="pass-data">
+                  <div>
+                    <div class="k">Sale</div>
+                    <div class="v">13:01</div>
+                  </div>
+                  <div>
+                    <div class="k">Llega</div>
+                    <div class="v">14:30</div>
+                  </div>
+                  <div>
+                    <div class="k">Pasajeros</div>
+                    <div class="v">2</div>
+                  </div>
+                  <div>
+                    <div class="k">Estado</div>
+                    <div class="v">Emitido</div>
+                  </div>
+                </div>
+              </div>
+              <div class="stub">
+                <div class="barcode" aria-hidden="true"></div>
+                <div class="seat">Regreso</div>
+              </div>
+            </article>
+          </div>
+          <p class="note">
+            Traslados aeropuerto — hotel — aeropuerto incluidos. Cuatro noches
+            en el Hotel Santa Cecilia B&amp;B, con desayuno cada mañana.
+          </p>
+          <a class="btn btn-ghost" href="assets/expediente-gj-2411.ics" download
+            >Agregar los vuelos al calendario</a
+          >
+        </section>
+
+        <section>
+          <div class="sec-head">
+            <span class="eyebrow">Anexo C · Cartografía</span>
+            <h2>El recorrido</h2>
+          </div>
+          <div class="map-frame static">
+            <svg
+              viewBox="0 0 420 460"
+              role="img"
+              aria-label="Mapa de Cartagena con los cuatro puntos del recorrido"
+            >
+              <rect class="sea" x="0" y="0" width="420" height="460"></rect>
+              <rect
+                x="0"
+                y="0"
+                width="420"
+                height="460"
+                fill="url(#wave)"
+              ></rect>
+              <path
+                class="land"
+                d="M256 -10 L430 -10 L430 470 L336 470 Q312 410 318 352 Q326 300 340 262 Q348 224 330 196 Q312 172 286 166 Q268 150 262 120 Q252 80 258 30 Z"
+              ></path>
+              <path
+                class="land spit"
+                d="M262 132 Q240 168 220 208 Q208 238 202 268 L218 276 Q226 242 238 214 Q256 176 276 144 Z"
+              ></path>
+              <path
+                class="land"
+                d="M196 280 q40 4 46 40 q6 36 -30 50 q-38 14 -56 -16 q-16 -28 6 -52 q14 -20 34 -22 Z"
+              ></path>
+              <path
+                class="land islet"
+                d="M58 384 q26 -14 46 0 q16 12 0 26 q-22 16 -46 4 q-16 -10 0 -30 Z"
+              ></path>
+              <path
+                class="land islet"
+                d="M108 418 q20 -10 34 2 q12 10 -2 20 q-18 12 -34 2 q-12 -8 2 -24 Z"
+              ></path>
+              <path
+                class="land islet"
+                d="M38 432 q14 -8 24 0 q8 8 -4 14 q-14 6 -22 -2 Z"
+              ></path>
+              <g id="cityPinsStatic"></g>
+            </svg>
+          </div>
+        </section>
+
+        <section>
+          <div class="sec-head">
+            <span class="eyebrow">Anexo D · Cronograma</span>
+            <h2>Movimientos programados</h2>
+          </div>
+          <div class="days">
+            <article class="day">
+              <h3>Llegada y bahía al atardecer</h3>
+              <span class="when">Día 1 · Martes 24 de noviembre</span>
+              <p>
+                Aterrizaje a las 08:02 y traslado directo al Hotel Santa Cecilia
+                B&amp;B. En la tarde, dos horas a bordo del
+                <em>Bequia Eagle</em> recorriendo la bahía mientras se cae el
+                sol. Bar abierto.
+              </p>
+              <span class="tag">Barco · 2 horas</span>
+            </article>
+            <article class="day">
+              <h3>La ciudad amurallada en chiva</h3>
+              <span class="when">Día 2 · Miércoles 25 de noviembre</span>
+              <p>
+                Cuatro horas por Bocagrande, Castillogrande, La Bodeguita, la
+                Torre del Reloj y Getsemaní. Subida al convento de La Popa por
+                la vista, entrada al Castillo de San Felipe de Barajas y
+                caminata entre plazas, calles empedradas y Las Bóvedas.
+              </p>
+              <span class="tag">Entrada a San Felipe incluida</span>
+            </article>
+            <article class="day">
+              <h3>Islas: club de playa</h3>
+              <span class="when">Día 3 · Jueves 26 de noviembre</span>
+              <p>
+                Lancha hacia el club de playa: parasol, asoleadoras, barra
+                abierta todo el día y almuerzo típico a elegir entre filete de
+                pescado, pollo a la plancha, arroz con mariscos o arroz con
+                vegetales. Opcional: recorrido panorámico con parada en el
+                Oceanario.
+              </p>
+              <span class="tag">8 horas · Bar abierto</span>
+            </article>
+            <article class="day free">
+              <h3>Día libre</h3>
+              <span class="when">Día 4 · Viernes 27 de noviembre</span>
+              <p>
+                Sin agenda, a propósito. Lo que decidamos esa mañana: dormir
+                hasta tarde, perdernos en el centro histórico, comer donde huela
+                bien.
+              </p>
+              <span class="tag">Sin instrucciones</span>
+            </article>
+            <article class="day">
+              <h3>Regreso</h3>
+              <span class="when">Día 5 · Sábado 28 de noviembre</span>
+              <p>
+                Traslado al aeropuerto y vuelo de las 13:01 de vuelta a Bogotá.
+                Operación cerrada a las 14:30.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section>
+          <div class="sec-head">
+            <span class="eyebrow">Anexo E</span>
+            <h2>Recursos ya autorizados</h2>
+          </div>
+          <ul class="prov">
+            <li>Vuelos ida y regreso Bogotá — Cartagena — Bogotá</li>
+            <li>Traslados aeropuerto — hotel — aeropuerto</li>
+            <li>4 noches en el Hotel Santa Cecilia B&amp;B</li>
+            <li>Desayuno por cada noche</li>
+            <li>Tour al atardecer por la bahía</li>
+            <li>City tour con entrada al Castillo de San Felipe</li>
+            <li>Día completo en el club de playa, con almuerzo</li>
+            <li>1 equipaje de cabina de 12 kg para los dos</li>
+            <li>Artículo personal de 10 kg bajo el asiento, por persona</li>
+            <li>Asistencia médica en viaje</li>
+            <li>IVA</li>
+          </ul>
+        </section>
+
+        <section>
+          <div class="sec-head">
+            <span class="eyebrow">Anexo F · Preparativos</span>
+            <h2>Antes de salir</h2>
+          </div>
+          <div class="prep">
+            <article>
+              <h3>El clima que nos espera</h3>
+              <p>
+                Finales de noviembre en Cartagena: entre 26 y 32 °C, humedad
+                alta y sol fuerte desde temprano. Es la cola de la temporada de
+                lluvias, así que puede caer un aguacero corto en la tarde y
+                despejarse veinte minutos después. El mar ronda los 29 °C.
+              </p>
+            </article>
+            <article>
+              <h3>Qué empacar</h3>
+              <ul>
+                <li>Ropa liviana y de secado rápido</li>
+                <li>Vestido de baño — dos, si es posible</li>
+                <li>Toalla propia para el club de playa</li>
+                <li>Protector solar y repelente</li>
+                <li>Gorra o sombrero y gafas de sol</li>
+                <li>Zapatos cómodos para calle empedrada</li>
+                <li>Algo de manga larga para el avión</li>
+                <li>Cédula de los dos</li>
+              </ul>
+            </article>
+            <article>
+              <h3>Horarios del hotel</h3>
+              <p>
+                Aterrizamos a las 08:02, bastante antes del check-in. La maleta
+                se puede dejar en recepción mientras tanto. El día del regreso
+                pasa lo mismo: el check-out va antes del vuelo de la 13:01, así
+                que el equipaje vuelve a recepción.
+              </p>
+            </article>
+            <article>
+              <h3>Equipaje permitido</h3>
+              <p>
+                Un equipaje de cabina de 12 kg para los dos, más un artículo
+                personal de 10 kg por persona: bolso o morral, sin llantas. Lo
+                que se pase de ahí lo cobra Wingo en el aeropuerto.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section>
+          <div class="sec-head">
+            <span class="eyebrow">Anexo G</span>
+            <h2>Evidencia fotográfica</h2>
+          </div>
+          <div class="gallery">
+            <figure class="polaroid tilt-a" data-develop>
+              <img
+                src="assets/img/evidencia-02.jpg"
+                alt="Evidencia 02"
+                width="1200"
+                height="1200"
+                loading="lazy"
+                decoding="async"
+              />
+              <figcaption>EVID-02</figcaption>
+            </figure>
+            <figure class="polaroid tilt-b" data-develop>
+              <img
+                src="assets/img/evidencia-03.jpg"
+                alt="Evidencia 03"
+                width="1200"
+                height="1200"
+                loading="lazy"
+                decoding="async"
+              />
+              <figcaption>EVID-03</figcaption>
+            </figure>
+            <figure class="polaroid tilt-c" data-develop>
+              <img
+                src="assets/img/evidencia-04.jpg"
+                alt="Evidencia 04"
+                width="1200"
+                height="1200"
+                loading="lazy"
+                decoding="async"
+              />
+              <figcaption>EVID-04</figcaption>
+            </figure>
+            <figure class="polaroid tilt-b" data-develop>
+              <img
+                src="assets/img/evidencia-05.jpg"
+                alt="Evidencia 05"
+                width="1200"
+                height="1200"
+                loading="lazy"
+                decoding="async"
+              />
+              <figcaption>EVID-05</figcaption>
+            </figure>
+            <figure class="polaroid tilt-a" data-develop>
+              <img
+                src="assets/img/evidencia-06.jpg"
+                alt="Evidencia 06"
+                width="1200"
+                height="1200"
+                loading="lazy"
+                decoding="async"
+              />
+              <figcaption>EVID-06</figcaption>
+            </figure>
+            <figure class="polaroid tilt-c" data-develop>
+              <img
+                src="assets/img/evidencia-07.jpg"
+                alt="Evidencia 07"
+                width="1200"
+                height="1200"
+                loading="lazy"
+                decoding="async"
+              />
+              <figcaption>EVID-07</figcaption>
+            </figure>
+          </div>
+        </section>
+
+        <section class="letter-sec">
+          <div class="sec-head">
+            <span class="eyebrow">Anexo H · Documento sellado</span>
+            <h2>Solo para Laura</h2>
+          </div>
+
+          <div class="seal-wrap" id="sealWrap">
+            <button
+              class="seal"
+              id="seal"
+              aria-label="Romper el sello y abrir la carta"
+            >
+              <span class="seal-mark">J<em>+</em>L</span>
+            </button>
+            <p class="seal-hint">Rompa el sello</p>
+          </div>
+
+          <article class="letter" id="letter" hidden>
+            <p>Laura, mi amor,</p>
+            <p>
+              Llevo semanas guardando este secreto y no sabes lo difícil que
+              fue. Cada vez que hablabas del mar, o de que necesitábamos salir
+              de Bogotá, tenía que hacerme el desentendido sabiendo que ya
+              estaba todo comprado.
+            </p>
+            <p>
+              Un año contigo se me pasó increíblemente rápido. Y se me ocurrió
+              que la mejor forma de celebrarlo no era un regalo que se quede en
+              la casa, sino cinco días que después podamos contar, cumpliendo
+              una de las cosas que mas me has dicho que quieres hacer.
+            </p>
+            <p>
+              Así que empaca ligero. El 24 de noviembre a las 6:30 de la mañana
+              nos vamos, y de ahí en adelante lo único que tenemos pendiente es
+              el mar.
+            </p>
+            <p class="sign">Te amo mi vida.</p>
+            <p class="sign">— Juan</p>
+          </article>
+        </section>
+
+        <footer>
+          <span>Expediente GJ-2411 · Caso cerrado</span>
+          <span>24 — 28 NOV 2026</span>
+        </footer>
+      </div>
+    </main>
+
+    <script src="assets/js/app.js"></script>
+  </body>
+</html>
