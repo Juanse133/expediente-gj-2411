@@ -193,6 +193,23 @@ a.btn{display:inline-block;text-decoration:none}
 .skip:hover{color:var(--paper-dim)}
 .skip:focus-visible{outline:1px solid var(--faint)}
 
+/* interruptor de sonido: vive fuera de la secuencia, sirve en ambas fases */
+.sound{
+  position:fixed;
+  bottom:16px;left:var(--gutter);
+  z-index:50;
+  background:none;border:0;
+  color:rgba(107,99,83,.6);
+  font-family:var(--mono);
+  font-size:.66rem;
+  letter-spacing:.2em;
+  cursor:pointer;
+  padding:6px;
+}
+.sound:hover{color:var(--paper-dim)}
+.sound:focus-visible{outline:1px solid var(--faint)}
+.sound.is-off{color:rgba(107,99,83,.35)}
+
 .stage{
   position:absolute;
   inset:0;

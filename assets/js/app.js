@@ -10,6 +10,134 @@
   var SVGNS = 'http://www.w3.org/2000/svg';
 
   /* ----------------------------------------------------------
+     0. SONIDO — sintetizado, sin archivos de audio
+
+     Los navegadores no dejan sonar nada hasta que hay un gesto del
+     usuario, así que el contexto se crea perezoso y se reanuda en el
+     primer toque. Mientras no esté corriendo, cada sonido se descarta
+     en vez de encolarse (si no, al reanudar saldrían todos de golpe).
+     ---------------------------------------------------------- */
+  var audio = (function () {
+    var KEY = 'gj2411-sonido';
+    var ctx = null, master = null, noiseBuf = null;
+    var on = true;
+
+    try { on = window.localStorage.getItem(KEY) !== 'off'; } catch (e) {}
+
+    function boot() {
+      if (ctx) return ctx;
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      try { ctx = new AC(); } catch (e) { return null; }
+
+      master = ctx.createGain();
+      master.gain.value = 0.5;
+      master.connect(ctx.destination);
+
+      var len = Math.floor(ctx.sampleRate * 0.5);
+      noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
+      var d = noiseBuf.getChannelData(0);
+      for (var i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+
+      return ctx;
+    }
+
+    // devuelve el contexto solo si de verdad puede sonar ahora mismo
+    function live() {
+      if (!on) return null;
+      var c = boot();
+      if (!c) return null;
+      if (c.state !== 'running') { try { c.resume(); } catch (e) {} return null; }
+      return c;
+    }
+
+    function tone(freq, dur, type, peak, glideTo, delay) {
+      var c = live(); if (!c) return;
+      var t = c.currentTime + (delay || 0);
+      var o = c.createOscillator(), g = c.createGain();
+      o.type = type || 'sine';
+      o.frequency.setValueAtTime(freq, t);
+      if (glideTo) o.frequency.exponentialRampToValueAtTime(glideTo, t + dur);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(peak, t + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); g.connect(master);
+      o.start(t); o.stop(t + dur + 0.03);
+    }
+
+    function hiss(dur, freq, q, peak, type, sweepTo) {
+      var c = live(); if (!c) return;
+      var t = c.currentTime;
+      var s = c.createBufferSource(); s.buffer = noiseBuf;
+      var f = c.createBiquadFilter();
+      f.type = type || 'bandpass';
+      f.frequency.setValueAtTime(freq, t);
+      if (sweepTo) f.frequency.exponentialRampToValueAtTime(sweepTo, t + dur);
+      f.Q.value = q || 1;
+      var g = c.createGain();
+      g.gain.setValueAtTime(peak, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      s.connect(f); f.connect(g); g.connect(master);
+      s.start(t); s.stop(t + dur + 0.03);
+    }
+
+    var api = {
+      // golpe de tecla de máquina de escribir
+      key: function () {
+        hiss(0.03, 1500 + Math.random() * 1100, 7, 0.2);
+        tone(150 + Math.random() * 60, 0.025, 'square', 0.04);
+      },
+      // salto de línea del carro
+      ret: function () { hiss(0.08, 620, 3, 0.22, 'bandpass', 300); },
+      // línea de advertencia del terminal
+      warn: function () { tone(300, 0.22, 'sawtooth', 0.07, 220); },
+      // clic de botón
+      click: function () { hiss(0.03, 2300, 4, 0.11); },
+      // cambio de etapa
+      thunk: function () { tone(140, 0.24, 'sine', 0.16, 68); },
+      // barra negra que se desclasifica
+      tear: function () { hiss(0.17, 1600, 0.8, 0.16, 'lowpass', 320); },
+      // pin del mapa que se enciende
+      blip: function () { tone(920, 0.11, 'triangle', 0.1, 1240); },
+      // avión que aterriza
+      land: function () { hiss(0.5, 800, 0.7, 0.12, 'lowpass', 180); },
+      // revelación del destino
+      reveal: function () {
+        var notes = [220, 277.18, 329.63, 440];
+        for (var i = 0; i < notes.length; i++) {
+          tone(notes[i], 1.9 - i * 0.15, 'sine', 0.12, null, i * 0.14);
+        }
+        hiss(0.9, 300, 0.6, 0.1, 'highpass', 3000);
+      },
+      // sello de lacre que se rompe
+      stamp: function () {
+        hiss(0.28, 260, 0.9, 0.42, 'lowpass');
+        tone(92, 0.34, 'sine', 0.22, 54);
+      },
+      isOn: function () { return on; },
+      toggle: function () {
+        on = !on;
+        try { window.localStorage.setItem(KEY, on ? 'on' : 'off'); } catch (e) {}
+        if (on) { var c = boot(); if (c && c.state !== 'running') { try { c.resume(); } catch (e) {} } }
+        return on;
+      },
+      wake: function () {
+        if (!on) return;
+        var c = boot();
+        if (c && c.state !== 'running') { try { c.resume(); } catch (e) {} }
+      }
+    };
+
+    // primer gesto de la sesión: desbloquea el audio
+    var evts = ['pointerdown', 'touchstart', 'keydown'];
+    for (var k = 0; k < evts.length; k++) {
+      document.addEventListener(evts[k], api.wake, { passive: true });
+    }
+
+    return api;
+  })();
+
+  /* ----------------------------------------------------------
      1. MÁQUINA DE ETAPAS
      ---------------------------------------------------------- */
   var sequence = $('#sequence');
@@ -27,6 +155,7 @@
     current = i;
     stages[current].classList.add('is-active');
     stages[current].scrollTop = 0;
+    audio.thunk();
 
     railFill.style.width = (current / (stages.length - 1) * 100) + '%';
     seqCount.textContent = pad2(current) + ' / ' + pad2(stages.length - 1);
@@ -49,7 +178,7 @@
   }
 
   $$('[data-next]').forEach(function (btn) {
-    btn.addEventListener('click', function () { goTo(current + 1); });
+    btn.addEventListener('click', function () { audio.click(); goTo(current + 1); });
   });
 
   $('#btnSkip').addEventListener('click', function () {
@@ -95,6 +224,7 @@
       var span = document.createElement('span');
       if (line.c) span.className = line.c;
       out.appendChild(span);
+      if (line.c === 'warn') audio.warn();
 
       var caret = $('.caret', out);
       if (!caret) {
@@ -106,8 +236,11 @@
       var ci = 0;
       var timer = setInterval(function () {
         span.textContent = line.t.slice(0, ++ci);
+        // una de cada dos teclas: el traqueteo suena más real y carga menos
+        if (ci % 2) audio.key();
         if (ci >= line.t.length) {
           clearInterval(timer);
+          audio.ret();
           out.insertBefore(document.createTextNode('\n'), caret);
           li++;
           setTimeout(typeLine, line.d);
@@ -126,6 +259,7 @@
     el.removeAttribute('tabindex');
     el.removeAttribute('role');
     el.removeAttribute('aria-label');
+    audio.tear();
     checkStageBars(el.closest('.stage'));
   }
 
@@ -235,6 +369,7 @@
 
   function landed() {
     flightDone = true;
+    audio.land();
     var dest = $('.pt.dest');
     if (dest) dest.classList.add('live');
     checkStageBars(stages[2]);
@@ -350,6 +485,7 @@
     pins.forEach(function (pin, i) {
       setTimeout(function () {
         pin.classList.add('lit');
+        audio.blip();
         if (items[i]) items[i].classList.add('lit');
         if (i === pins.length - 1 && btn) btn.disabled = false;
       }, i * step);
@@ -381,6 +517,7 @@
       s.style.animationDelay = (i * 0.075) + 's';
     });
     word.classList.add('in');
+    audio.reveal();
     if (reduced) return;
     // el confeti solo cuando la etapa ya está en pantalla y el nombre terminó de armarse
     whenStageVisible(stages[4], function () {
@@ -389,6 +526,7 @@
   }
 
   $('#btnOpenDossier').addEventListener('click', function () {
+    audio.thunk();
     sequence.classList.add('is-done');
     document.body.classList.remove('locked');
     $('#dossier').hidden = false;
@@ -537,6 +675,7 @@
   }
 
   $('#seal').addEventListener('click', function () {
+    audio.stamp();
     $('#sealWrap').classList.add('is-broken');
     $('#letter').hidden = false;
     setTimeout(function () { burst(90); }, 260);
@@ -546,7 +685,26 @@
   });
 
   /* ----------------------------------------------------------
-     9. ARRANQUE
+     9. INTERRUPTOR DE SONIDO
+     ---------------------------------------------------------- */
+  var btnSound = $('#btnSound');
+  var btnSoundText = $('#btnSoundText');
+
+  function paintSound() {
+    var on = audio.isOn();
+    btnSound.classList.toggle('is-off', !on);
+    btnSound.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btnSoundText.textContent = on ? 'sonido' : 'silencio';
+  }
+
+  btnSound.addEventListener('click', function () {
+    if (audio.toggle()) audio.click();
+    paintSound();
+  });
+  paintSound();
+
+  /* ----------------------------------------------------------
+     10. ARRANQUE
      ---------------------------------------------------------- */
   buildColombia();
   buildPins();
