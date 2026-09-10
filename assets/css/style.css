@@ -4,6 +4,10 @@
    ============================================================ */
 
 :root{
+  /* la página ya es oscura: evita que el modo oscuro forzado
+     de los navegadores la recoloree y rompa los mapas SVG */
+  color-scheme:dark;
+
   --ink:#0C0B0A;
   --ink-2:#151310;
   --ink-3:#201C16;
