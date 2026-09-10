@@ -261,6 +261,32 @@ a.btn{display:inline-block;text-decoration:none}
 
 .col-media{display:flex;justify-content:center}
 
+/* ---------- portada de arranque ----------
+   El navegador no deja sonar nada sin un gesto previo, así que el
+   primer toque es parte de la ficción en vez de una pelea perdida. */
+.boot{
+  position:absolute;
+  inset:0;
+  z-index:6;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border:0;
+  background:var(--ink);
+  cursor:pointer;
+  font-family:var(--mono);
+  font-size:clamp(.72rem,2.6vw,.92rem);
+  letter-spacing:.24em;
+  text-transform:uppercase;
+  color:var(--caribe);
+  text-shadow:0 0 14px rgba(23,165,161,.3);
+  padding:var(--gutter);
+  transition:opacity .55s ease;
+}
+.boot span{animation:pulse 2.2s ease-in-out infinite}
+.boot:focus-visible{outline:1px solid var(--caribe);outline-offset:-6px}
+.boot.is-gone{opacity:0;pointer-events:none}
+
 /* ---------- terminal ---------- */
 .terminal-wrap{
   display:flex;

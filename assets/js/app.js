@@ -10,19 +10,29 @@
   var SVGNS = 'http://www.w3.org/2000/svg';
 
   /* ----------------------------------------------------------
-     0. SONIDO — sintetizado, sin archivos de audio
+     0. SONIDO — todo sintetizado, sin archivos de audio
 
-     Los navegadores no dejan sonar nada hasta que hay un gesto del
-     usuario, así que el contexto se crea perezoso y se reanuda en el
-     primer toque. Mientras no esté corriendo, cada sonido se descarta
-     en vez de encolarse (si no, al reanudar saldrían todos de golpe).
+     Ningún navegador deja sonar nada antes de un gesto del usuario,
+     así que el contexto se crea perezoso y se reanuda en el primer
+     toque. Mientras no esté corriendo los sonidos se descartan en vez
+     de encolarse: si no, al desbloquearse saldrían todos de golpe.
      ---------------------------------------------------------- */
   var audio = (function () {
     var KEY = 'gj2411-sonido';
-    var ctx = null, master = null, noiseBuf = null;
+    var ctx = null, master = null, noiseBuf = null, noiseLong = null;
     var on = true;
+    var bed = null;        // lecho ambiental sonando ahora
+    var bedName = null;    // el que debería sonar (aunque aún no suene)
 
     try { on = window.localStorage.getItem(KEY) !== 'off'; } catch (e) {}
+
+    function fillNoise(seconds) {
+      var len = Math.floor(ctx.sampleRate * seconds);
+      var b = ctx.createBuffer(1, len, ctx.sampleRate);
+      var d = b.getChannelData(0);
+      for (var i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      return b;
+    }
 
     function boot() {
       if (ctx) return ctx;
@@ -30,19 +40,23 @@
       if (!AC) return null;
       try { ctx = new AC(); } catch (e) { return null; }
 
+      // Chrome deja pendiente para siempre la promesa de un resume() previo
+      // al gesto, así que el lecho ambiental se engancha aquí y no a ella.
+      ctx.addEventListener('statechange', function () {
+        if (ctx.state === 'running') applyBed();
+      });
+
       master = ctx.createGain();
       master.gain.value = 0.5;
       master.connect(ctx.destination);
 
-      var len = Math.floor(ctx.sampleRate * 0.5);
-      noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
-      var d = noiseBuf.getChannelData(0);
-      for (var i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      noiseBuf  = fillNoise(0.5);   // golpes cortos
+      noiseLong = fillNoise(4);     // lechos en bucle, largo para que no se note el ciclo
 
       return ctx;
     }
 
-    // devuelve el contexto solo si de verdad puede sonar ahora mismo
+    // el contexto solo si de verdad puede sonar ahora mismo
     function live() {
       if (!on) return null;
       var c = boot();
@@ -50,6 +64,8 @@
       if (c.state !== 'running') { try { c.resume(); } catch (e) {} return null; }
       return c;
     }
+
+    /* ---------- primitivas ---------- */
 
     function tone(freq, dur, type, peak, glideTo, delay) {
       var c = live(); if (!c) return;
@@ -59,15 +75,15 @@
       o.frequency.setValueAtTime(freq, t);
       if (glideTo) o.frequency.exponentialRampToValueAtTime(glideTo, t + dur);
       g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(peak, t + 0.012);
+      g.gain.exponentialRampToValueAtTime(peak, t + 0.006);
       g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
       o.connect(g); g.connect(master);
       o.start(t); o.stop(t + dur + 0.03);
     }
 
-    function hiss(dur, freq, q, peak, type, sweepTo) {
+    function hiss(dur, freq, q, peak, type, sweepTo, delay) {
       var c = live(); if (!c) return;
-      var t = c.currentTime;
+      var t = c.currentTime + (delay || 0);
       var s = c.createBufferSource(); s.buffer = noiseBuf;
       var f = c.createBiquadFilter();
       f.type = type || 'bandpass';
@@ -81,27 +97,188 @@
       s.start(t); s.stop(t + dur + 0.03);
     }
 
+    /* ---------- lechos ambientales ----------
+       Cada lecho es un puñado de nodos en bucle colgando de su propia
+       ganancia, para poder cruzarlos sin cortes. */
+
+    function loopNoise(c) {
+      var s = c.createBufferSource();
+      s.buffer = noiseLong;
+      s.loop = true;
+      return s;
+    }
+
+    // oscilador lento que mueve un parámetro (respiración del lecho)
+    function breathe(c, param, freq, depth, base, nodes) {
+      param.value = base;
+      var o = c.createOscillator(), g = c.createGain();
+      o.type = 'sine';
+      o.frequency.value = freq;
+      g.gain.value = depth;
+      o.connect(g); g.connect(param);
+      o.start();
+      nodes.push(o);
+    }
+
+    // sótano de expediente secreto: zumbido grave, aire de sala y un
+    // golpe lejano de vez en cuando
+    function bedMystery(c, out) {
+      var nodes = [];
+
+      var lp = c.createBiquadFilter();
+      lp.type = 'lowpass'; lp.frequency.value = 320; lp.Q.value = 0.7;
+      lp.connect(out);
+
+      var drone = [55, 55.35, 82.5];      // dos casi iguales laten entre sí
+      for (var i = 0; i < drone.length; i++) {
+        var o = c.createOscillator();
+        o.type = i === 2 ? 'triangle' : 'sine';
+        o.frequency.value = drone[i];
+        var g = c.createGain();
+        g.gain.value = i === 2 ? 0.06 : 0.13;
+        o.connect(g); g.connect(lp);
+        o.start();
+        nodes.push(o);
+      }
+
+      var air = loopNoise(c);
+      var af = c.createBiquadFilter();
+      af.type = 'lowpass'; af.Q.value = 0.6;
+      var ag = c.createGain(); ag.gain.value = 0.05;
+      air.connect(af); af.connect(ag); ag.connect(out);
+      breathe(c, af.frequency, 0.03, 130, 380, nodes);
+      air.start();
+      nodes.push(air);
+
+      // pulso lejano, irregular, para que nunca se sienta un bucle
+      var alive = true;
+      (function knock() {
+        if (!alive) return;
+        var wait = 6000 + Math.random() * 9000;
+        setTimeout(function () {
+          if (!alive) return;
+          tone(110 + Math.random() * 40, 1.6, 'sine', 0.05);
+          knock();
+        }, wait);
+      })();
+      nodes.push({ stop: function () { alive = false; } });
+
+      return nodes;
+    }
+
+    // playa: oleaje que va y viene, espuma y un fondo hondo
+    function bedBeach(c, out) {
+      var nodes = [];
+
+      var waves = loopNoise(c);
+      var wf = c.createBiquadFilter();
+      wf.type = 'lowpass'; wf.Q.value = 0.8;
+      var wg = c.createGain();
+      waves.connect(wf); wf.connect(wg); wg.connect(out);
+      breathe(c, wf.frequency, 0.085, 420, 760, nodes);   // la ola se abre y se cierra
+      breathe(c, wg.gain, 0.085, 0.06, 0.085, nodes);
+      waves.start();
+      nodes.push(waves);
+
+      var foam = loopNoise(c);
+      var ff = c.createBiquadFilter();
+      ff.type = 'bandpass'; ff.frequency.value = 2600; ff.Q.value = 0.7;
+      var fg = c.createGain();
+      foam.connect(ff); ff.connect(fg); fg.connect(out);
+      breathe(c, fg.gain, 0.13, 0.016, 0.022, nodes);
+      foam.start();
+      nodes.push(foam);
+
+      // gaviota lejana cada tanto, nunca a intervalos fijos
+      var alive = true;
+      (function gulls() {
+        if (!alive) return;
+        setTimeout(function () {
+          if (!alive) return;
+          api.gull();
+          gulls();
+        }, 9000 + Math.random() * 14000);
+      })();
+      nodes.push({ stop: function () { alive = false; } });
+
+      var deep = c.createOscillator();
+      deep.type = 'sine'; deep.frequency.value = 46;
+      var dg = c.createGain(); dg.gain.value = 0.05;
+      deep.connect(dg); dg.connect(out);
+      deep.start();
+      nodes.push(deep);
+
+      return nodes;
+    }
+
+    function killBed(b, fade) {
+      if (!b) return;
+      var c = ctx, t = c.currentTime;
+      try {
+        b.gain.gain.cancelScheduledValues(t);
+        b.gain.gain.setValueAtTime(b.gain.gain.value, t);
+        b.gain.gain.linearRampToValueAtTime(0.0001, t + fade);
+      } catch (e) {}
+      setTimeout(function () {
+        for (var i = 0; i < b.nodes.length; i++) {
+          try { b.nodes[i].stop(); } catch (e) {}
+        }
+        try { b.gain.disconnect(); } catch (e) {}
+      }, fade * 1000 + 120);
+    }
+
+    function applyBed() {
+      var c = live();
+      if (!c) return;                       // aún sin permiso: queda pendiente
+      if (bed && bed.name === bedName) return;
+
+      killBed(bed, 1.6);
+      bed = null;
+      if (!bedName) return;
+
+      var g = c.createGain();
+      g.gain.value = 0.0001;
+      g.connect(master);
+      var nodes = bedName === 'beach' ? bedBeach(c, g) : bedMystery(c, g);
+      g.gain.linearRampToValueAtTime(1, c.currentTime + 2.6);
+      bed = { name: bedName, gain: g, nodes: nodes };
+    }
+
     var api = {
-      // golpe de tecla de máquina de escribir
+      /* ---------- máquina de escribir ----------
+         Tres capas: la palanca que golpea, el tipo contra el papel y la
+         resonancia de la carcasa metálica. */
       key: function () {
-        hiss(0.03, 1500 + Math.random() * 1100, 7, 0.2);
-        tone(150 + Math.random() * 60, 0.025, 'square', 0.04);
+        var v = 0.85 + Math.random() * 0.3;
+        hiss(0.008, 3400 + Math.random() * 900, 11, 0.12 * v);          // tipo contra el papel
+        tone(168 + Math.random() * 34, 0.05, 'triangle', 0.17 * v, 96); // palanca
+        hiss(0.055, 820 + Math.random() * 240, 2.2, 0.07 * v);          // carcasa
       },
-      // salto de línea del carro
-      ret: function () { hiss(0.08, 620, 3, 0.22, 'bandpass', 300); },
-      // línea de advertencia del terminal
+      space: function () {
+        hiss(0.035, 420, 1.6, 0.1);
+        tone(120, 0.05, 'sine', 0.09, 80);
+      },
+      // campanita de final de línea
+      bell: function () {
+        tone(1780, 0.9, 'sine', 0.055);
+        tone(2670, 0.6, 'sine', 0.022, null, 0.005);
+      },
+      // el carro vuelve a la izquierda
+      ret: function () {
+        hiss(0.13, 1500, 1.1, 0.14, 'bandpass', 420);
+        tone(150, 0.1, 'triangle', 0.1, 88, 0.09);
+      },
       warn: function () { tone(300, 0.22, 'sawtooth', 0.07, 220); },
-      // clic de botón
       click: function () { hiss(0.03, 2300, 4, 0.11); },
-      // cambio de etapa
       thunk: function () { tone(140, 0.24, 'sine', 0.16, 68); },
-      // barra negra que se desclasifica
       tear: function () { hiss(0.17, 1600, 0.8, 0.16, 'lowpass', 320); },
-      // pin del mapa que se enciende
       blip: function () { tone(920, 0.11, 'triangle', 0.1, 1240); },
-      // avión que aterriza
       land: function () { hiss(0.5, 800, 0.7, 0.12, 'lowpass', 180); },
-      // revelación del destino
+      // gaviota lejana, para la playa
+      gull: function () {
+        tone(1250, 0.16, 'triangle', 0.045, 1750);
+        tone(1650, 0.2, 'triangle', 0.04, 1050, 0.19);
+      },
       reveal: function () {
         var notes = [220, 277.18, 329.63, 440];
         for (var i = 0; i < notes.length; i++) {
@@ -109,30 +286,48 @@
         }
         hiss(0.9, 300, 0.6, 0.1, 'highpass', 3000);
       },
-      // sello de lacre que se rompe
       stamp: function () {
         hiss(0.28, 260, 0.9, 0.42, 'lowpass');
         tone(92, 0.34, 'sine', 0.22, 54);
       },
+
+      /* ---------- ambiente ---------- */
+      ambient: function (name) {
+        bedName = name;
+        applyBed();
+      },
+
       isOn: function () { return on; },
       toggle: function () {
         on = !on;
         try { window.localStorage.setItem(KEY, on ? 'on' : 'off'); } catch (e) {}
-        if (on) { var c = boot(); if (c && c.state !== 'running') { try { c.resume(); } catch (e) {} } }
+        if (on) { boot(); api.wake(); }
+        else { killBed(bed, 0.5); bed = null; }
         return on;
       },
       wake: function () {
         if (!on) return;
         var c = boot();
-        if (c && c.state !== 'running') { try { c.resume(); } catch (e) {} }
+        if (!c) return;
+        if (c.state !== 'running') {
+          try { c.resume(); } catch (e) {}
+          return;   // applyBed llega por el evento statechange
+        }
+        applyBed();
       }
     };
 
-    // primer gesto de la sesión: desbloquea el audio
+    // cualquier gesto del usuario sirve para desbloquear el audio
     var evts = ['pointerdown', 'touchstart', 'keydown'];
     for (var k = 0; k < evts.length; k++) {
       document.addEventListener(evts[k], api.wake, { passive: true });
     }
+
+    // al volver de otra pestaña el contexto puede quedar suspendido
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) api.wake();
+    });
+
 
     return api;
   })();
@@ -237,10 +432,13 @@
       var timer = setInterval(function () {
         span.textContent = line.t.slice(0, ++ci);
         // una de cada dos teclas: el traqueteo suena más real y carga menos
-        if (ci % 2) audio.key();
+        if (ci % 2) {
+          if (line.t.charAt(ci - 1) === ' ') audio.space(); else audio.key();
+        }
         if (ci >= line.t.length) {
           clearInterval(timer);
-          audio.ret();
+          audio.bell();
+          setTimeout(audio.ret, 190);
           out.insertBefore(document.createTextNode('\n'), caret);
           li++;
           setTimeout(typeLine, line.d);
@@ -518,6 +716,7 @@
     });
     word.classList.add('in');
     audio.reveal();
+    audio.ambient('beach');
     if (reduced) return;
     // el confeti solo cuando la etapa ya está en pantalla y el nombre terminó de armarse
     whenStageVisible(stages[4], function () {
@@ -527,6 +726,7 @@
 
   $('#btnOpenDossier').addEventListener('click', function () {
     audio.thunk();
+    audio.ambient('beach');
     sequence.classList.add('is-done');
     document.body.classList.remove('locked');
     $('#dossier').hidden = false;
@@ -708,10 +908,28 @@
      ---------------------------------------------------------- */
   buildColombia();
   buildPins();
-  runTerminal();
   entered[0] = true;
 
+  var boot = $('#btnBoot');
+  var booted = false;
+
+  // el primer toque arranca la conexión y, de paso, desbloquea el audio
+  function connect() {
+    if (booted) return;
+    booted = true;
+    audio.wake();
+    audio.ambient('mystery');
+    boot.classList.add('is-gone');
+    setTimeout(function () { boot.hidden = true; }, 600);
+    runTerminal();
+  }
+
+  boot.addEventListener('click', connect);
+
+
   if (/[?&](skip|dev)\b/.test(location.search)) {
+    booted = true;
+    boot.hidden = true;
     for (var i = 0; i < 4; i++) entered[i] = true;
     goTo(4);
   }
