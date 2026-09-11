@@ -188,25 +188,41 @@
       return nodes;
     }
 
-    // playa: oleaje que va y viene, espuma, fondo hondo y gaviotas
+    // playa entera, no solo mar: la ola de fondo, la espuma, la brisa,
+    // gente lejana, palmeras y gaviotas. Todo muy por debajo del habla.
     function bedBeach(c, out) {
       var nodes = [];
 
-      var waves = layer(c, out, 'lowpass', 760, 0.8, 0.12, nodes);
-      breathe(c, waves.filter.frequency, 0.085, 420, 760, nodes);
-      breathe(c, waves.gain.gain, 0.085, 0.085, 0.12, nodes);
+      // la ola, lejos y sin sibilancia
+      var waves = layer(c, out, 'lowpass', 620, 0.8, 0.055, nodes);
+      breathe(c, waves.filter.frequency, 0.07, 260, 620, nodes);
+      breathe(c, waves.gain.gain, 0.07, 0.035, 0.055, nodes);
 
-      var foam = layer(c, out, 'bandpass', 2600, 0.7, 0.03, nodes);
-      breathe(c, foam.gain.gain, 0.13, 0.022, 0.032, nodes);
+      // espuma: apenas un susurro cuando la ola rompe
+      var foam = layer(c, out, 'bandpass', 2200, 0.6, 0.012, nodes);
+      breathe(c, foam.gain.gain, 0.11, 0.008, 0.012, nodes);
+
+      // brisa continua
+      var breeze = layer(c, out, 'lowpass', 300, 0.5, 0.03, nodes);
+      breathe(c, breeze.filter.frequency, 0.02, 80, 300, nodes);
+
+      // gente lejana en la playa, sin palabras reconocibles
+      var gente = layer(c, out, 'bandpass', 480, 0.9, 0.02, nodes);
+      breathe(c, gente.gain.gain, 0.05, 0.008, 0.02, nodes);
 
       var deep = c.createOscillator();
       deep.type = 'sine'; deep.frequency.value = 46;
-      var dg = c.createGain(); dg.gain.value = 0.07;
+      var dg = c.createGain(); dg.gain.value = 0.03;
       deep.connect(dg); dg.connect(out);
       deep.start();
       nodes.push(deep);
 
-      scatter(nodes, 9000, 23000, function () { api.gull(); });
+      // hojas de palma con el viento
+      scatter(nodes, 8000, 20000, function () {
+        hiss(0.45, 2600, 0.7, 0.028, 'bandpass', 1500);
+      });
+
+      scatter(nodes, 12000, 30000, function () { api.gull(); });
 
       return nodes;
     }
@@ -321,8 +337,8 @@
       tear:  function () { hiss(0.17, 1600, 0.8, 0.28, 'lowpass', 320); },
       land:  function () { hiss(0.5, 800, 0.7, 0.22, 'lowpass', 180); },
       gull:  function () {
-        tone(1250, 0.16, 'triangle', 0.07, 1750);
-        tone(1650, 0.2, 'triangle', 0.06, 1050, 0.19);
+        tone(1250, 0.16, 'triangle', 0.035, 1750);
+        tone(1650, 0.2, 'triangle', 0.03, 1050, 0.19);
       },
 
       // cada punto del mapa toca su nota: los cuatro forman una frase
