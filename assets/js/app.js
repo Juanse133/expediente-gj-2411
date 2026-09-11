@@ -23,6 +23,8 @@
     var on = true;
     var bed = null;        // lecho ambiental sonando ahora
     var bedName = null;    // el que debería sonar (aunque aún no suene)
+    var ducked = false;    // ambiente bajado (pestaña en segundo plano)
+    var engine = null;     // turbina del avión
 
     try { on = window.localStorage.getItem(KEY) !== 'off'; } catch (e) {}
 
@@ -46,9 +48,19 @@
         if (ctx.state === 'running') applyBed();
       });
 
+      // el compresor deja subir el volumen general sin que los golpes
+      // fuertes (sello, obturador) saturen al sumarse con el ambiente
+      var comp = ctx.createDynamicsCompressor();
+      comp.threshold.value = -16;
+      comp.knee.value = 22;
+      comp.ratio.value = 4;
+      comp.attack.value = 0.004;
+      comp.release.value = 0.25;
+      comp.connect(ctx.destination);
+
       master = ctx.createGain();
-      master.gain.value = 0.5;
-      master.connect(ctx.destination);
+      master.gain.value = 0.95;
+      master.connect(comp);
 
       noiseBuf  = fillNoise(0.5);   // golpes cortos
       noiseLong = fillNoise(4);     // lechos en bucle, largo para que no se note el ciclo
@@ -108,7 +120,7 @@
       return s;
     }
 
-    // oscilador lento que mueve un parámetro (respiración del lecho)
+    // oscilador lento que mueve un parámetro (la respiración del lecho)
     function breathe(c, param, freq, depth, base, nodes) {
       param.value = base;
       var o = c.createOscillator(), g = c.createGain();
@@ -120,8 +132,33 @@
       nodes.push(o);
     }
 
-    // sótano de expediente secreto: zumbido grave, aire de sala y un
-    // golpe lejano de vez en cuando
+    // capa de ruido filtrado, base de casi todos los lechos
+    function layer(c, out, filterType, freq, q, level, nodes) {
+      var s = loopNoise(c);
+      var f = c.createBiquadFilter();
+      f.type = filterType; f.frequency.value = freq; f.Q.value = q;
+      var g = c.createGain(); g.gain.value = level;
+      s.connect(f); f.connect(g); g.connect(out);
+      s.start();
+      nodes.push(s);
+      return { src: s, filter: f, gain: g };
+    }
+
+    // evento suelto que se repite a intervalos irregulares
+    function scatter(nodes, minMs, maxMs, fn) {
+      var alive = true;
+      (function next() {
+        if (!alive) return;
+        setTimeout(function () {
+          if (!alive) return;
+          fn();
+          next();
+        }, minMs + Math.random() * (maxMs - minMs));
+      })();
+      nodes.push({ stop: function () { alive = false; } });
+    }
+
+    // sótano de expediente: zumbido grave, aire de sala y golpes lejanos
     function bedMystery(c, out) {
       var nodes = [];
 
@@ -129,91 +166,102 @@
       lp.type = 'lowpass'; lp.frequency.value = 320; lp.Q.value = 0.7;
       lp.connect(out);
 
-      var drone = [55, 55.35, 82.5];      // dos casi iguales laten entre sí
+      var drone = [55, 55.35, 82.5];      // los dos primeros laten entre sí
       for (var i = 0; i < drone.length; i++) {
         var o = c.createOscillator();
         o.type = i === 2 ? 'triangle' : 'sine';
         o.frequency.value = drone[i];
         var g = c.createGain();
-        g.gain.value = i === 2 ? 0.06 : 0.13;
+        g.gain.value = i === 2 ? 0.09 : 0.19;
         o.connect(g); g.connect(lp);
         o.start();
         nodes.push(o);
       }
 
-      var air = loopNoise(c);
-      var af = c.createBiquadFilter();
-      af.type = 'lowpass'; af.Q.value = 0.6;
-      var ag = c.createGain(); ag.gain.value = 0.05;
-      air.connect(af); af.connect(ag); ag.connect(out);
-      breathe(c, af.frequency, 0.03, 130, 380, nodes);
-      air.start();
-      nodes.push(air);
+      var air = layer(c, out, 'lowpass', 380, 0.6, 0.075, nodes);
+      breathe(c, air.filter.frequency, 0.03, 130, 380, nodes);
 
-      // pulso lejano, irregular, para que nunca se sienta un bucle
-      var alive = true;
-      (function knock() {
-        if (!alive) return;
-        var wait = 6000 + Math.random() * 9000;
-        setTimeout(function () {
-          if (!alive) return;
-          tone(110 + Math.random() * 40, 1.6, 'sine', 0.05);
-          knock();
-        }, wait);
-      })();
-      nodes.push({ stop: function () { alive = false; } });
+      scatter(nodes, 6000, 15000, function () {
+        tone(110 + Math.random() * 40, 1.6, 'sine', 0.07);
+      });
 
       return nodes;
     }
 
-    // playa: oleaje que va y viene, espuma y un fondo hondo
+    // playa: oleaje que va y viene, espuma, fondo hondo y gaviotas
     function bedBeach(c, out) {
       var nodes = [];
 
-      var waves = loopNoise(c);
-      var wf = c.createBiquadFilter();
-      wf.type = 'lowpass'; wf.Q.value = 0.8;
-      var wg = c.createGain();
-      waves.connect(wf); wf.connect(wg); wg.connect(out);
-      breathe(c, wf.frequency, 0.085, 420, 760, nodes);   // la ola se abre y se cierra
-      breathe(c, wg.gain, 0.085, 0.06, 0.085, nodes);
-      waves.start();
-      nodes.push(waves);
+      var waves = layer(c, out, 'lowpass', 760, 0.8, 0.12, nodes);
+      breathe(c, waves.filter.frequency, 0.085, 420, 760, nodes);
+      breathe(c, waves.gain.gain, 0.085, 0.085, 0.12, nodes);
 
-      var foam = loopNoise(c);
-      var ff = c.createBiquadFilter();
-      ff.type = 'bandpass'; ff.frequency.value = 2600; ff.Q.value = 0.7;
-      var fg = c.createGain();
-      foam.connect(ff); ff.connect(fg); fg.connect(out);
-      breathe(c, fg.gain, 0.13, 0.016, 0.022, nodes);
-      foam.start();
-      nodes.push(foam);
-
-      // gaviota lejana cada tanto, nunca a intervalos fijos
-      var alive = true;
-      (function gulls() {
-        if (!alive) return;
-        setTimeout(function () {
-          if (!alive) return;
-          api.gull();
-          gulls();
-        }, 9000 + Math.random() * 14000);
-      })();
-      nodes.push({ stop: function () { alive = false; } });
+      var foam = layer(c, out, 'bandpass', 2600, 0.7, 0.03, nodes);
+      breathe(c, foam.gain.gain, 0.13, 0.022, 0.032, nodes);
 
       var deep = c.createOscillator();
       deep.type = 'sine'; deep.frequency.value = 46;
-      var dg = c.createGain(); dg.gain.value = 0.05;
+      var dg = c.createGain(); dg.gain.value = 0.07;
       deep.connect(dg); dg.connect(out);
       deep.start();
       nodes.push(deep);
 
+      scatter(nodes, 9000, 23000, function () { api.gull(); });
+
       return nodes;
     }
 
+    // sala de embarque: murmullo, aire acondicionado y campanilla
+    function bedAirport(c, out) {
+      var nodes = [];
+
+      var murmur = layer(c, out, 'lowpass', 520, 0.7, 0.1, nodes);
+      breathe(c, murmur.filter.frequency, 0.06, 140, 520, nodes);
+      breathe(c, murmur.gain.gain, 0.09, 0.03, 0.1, nodes);
+
+      var hum = c.createOscillator();
+      hum.type = 'sine'; hum.frequency.value = 92;
+      var hg = c.createGain(); hg.gain.value = 0.045;
+      hum.connect(hg); hg.connect(out);
+      hum.start();
+      nodes.push(hum);
+
+      scatter(nodes, 14000, 30000, function () {
+        tone(880, 0.9, 'sine', 0.07);
+        tone(1174.7, 0.8, 'sine', 0.055, null, 0.2);
+      });
+
+      return nodes;
+    }
+
+    // ciudad amurallada: gente lejana, tráfico y pasos sobre piedra
+    function bedStreet(c, out) {
+      var nodes = [];
+
+      var crowd = layer(c, out, 'bandpass', 700, 0.8, 0.075, nodes);
+      breathe(c, crowd.gain.gain, 0.07, 0.025, 0.075, nodes);
+
+      var traffic = layer(c, out, 'lowpass', 300, 0.6, 0.055, nodes);
+      breathe(c, traffic.filter.frequency, 0.04, 90, 300, nodes);
+
+      scatter(nodes, 2200, 6000, function () {
+        tone(170 + Math.random() * 60, 0.07, 'triangle', 0.05, 120);
+        hiss(0.04, 1600, 3, 0.03);
+      });
+
+      return nodes;
+    }
+
+    var BEDS = {
+      mystery: bedMystery,
+      beach:   bedBeach,
+      airport: bedAirport,
+      street:  bedStreet
+    };
+
     function killBed(b, fade) {
-      if (!b) return;
-      var c = ctx, t = c.currentTime;
+      if (!b || !ctx) return;
+      var t = ctx.currentTime;
       try {
         b.gain.gain.cancelScheduledValues(t);
         b.gain.gain.setValueAtTime(b.gain.gain.value, t);
@@ -234,61 +282,128 @@
 
       killBed(bed, 1.6);
       bed = null;
-      if (!bedName) return;
+      if (!bedName || !BEDS[bedName]) return;
 
       var g = c.createGain();
       g.gain.value = 0.0001;
       g.connect(master);
-      var nodes = bedName === 'beach' ? bedBeach(c, g) : bedMystery(c, g);
-      g.gain.linearRampToValueAtTime(1, c.currentTime + 2.6);
+      var nodes = BEDS[bedName](c, g);
+      g.gain.linearRampToValueAtTime(ducked ? 0.15 : 1, c.currentTime + 2.6);
       bed = { name: bedName, gain: g, nodes: nodes };
     }
 
     var api = {
       /* ---------- máquina de escribir ----------
-         Tres capas: la palanca que golpea, el tipo contra el papel y la
-         resonancia de la carcasa metálica. */
+         Tres capas: el tipo contra el papel, la palanca del mecanismo y
+         la resonancia de la carcasa metálica. */
       key: function () {
         var v = 0.85 + Math.random() * 0.3;
-        hiss(0.008, 3400 + Math.random() * 900, 11, 0.12 * v);          // tipo contra el papel
-        tone(168 + Math.random() * 34, 0.05, 'triangle', 0.17 * v, 96); // palanca
-        hiss(0.055, 820 + Math.random() * 240, 2.2, 0.07 * v);          // carcasa
+        hiss(0.008, 3400 + Math.random() * 900, 11, 0.22 * v);
+        tone(168 + Math.random() * 34, 0.05, 'triangle', 0.3 * v, 96);
+        hiss(0.055, 820 + Math.random() * 240, 2.2, 0.13 * v);
       },
       space: function () {
-        hiss(0.035, 420, 1.6, 0.1);
-        tone(120, 0.05, 'sine', 0.09, 80);
+        hiss(0.035, 420, 1.6, 0.18);
+        tone(120, 0.05, 'sine', 0.16, 80);
       },
-      // campanita de final de línea
       bell: function () {
-        tone(1780, 0.9, 'sine', 0.055);
-        tone(2670, 0.6, 'sine', 0.022, null, 0.005);
+        tone(1780, 0.9, 'sine', 0.1);
+        tone(2670, 0.6, 'sine', 0.04, null, 0.005);
       },
-      // el carro vuelve a la izquierda
       ret: function () {
-        hiss(0.13, 1500, 1.1, 0.14, 'bandpass', 420);
-        tone(150, 0.1, 'triangle', 0.1, 88, 0.09);
+        hiss(0.13, 1500, 1.1, 0.25, 'bandpass', 420);
+        tone(150, 0.1, 'triangle', 0.18, 88, 0.09);
       },
-      warn: function () { tone(300, 0.22, 'sawtooth', 0.07, 220); },
-      click: function () { hiss(0.03, 2300, 4, 0.11); },
-      thunk: function () { tone(140, 0.24, 'sine', 0.16, 68); },
-      tear: function () { hiss(0.17, 1600, 0.8, 0.16, 'lowpass', 320); },
-      blip: function () { tone(920, 0.11, 'triangle', 0.1, 1240); },
-      land: function () { hiss(0.5, 800, 0.7, 0.12, 'lowpass', 180); },
-      // gaviota lejana, para la playa
-      gull: function () {
-        tone(1250, 0.16, 'triangle', 0.045, 1750);
-        tone(1650, 0.2, 'triangle', 0.04, 1050, 0.19);
+
+      warn:  function () { tone(300, 0.22, 'sawtooth', 0.13, 220); },
+      click: function () { hiss(0.03, 2300, 4, 0.2); },
+      thunk: function () { tone(140, 0.24, 'sine', 0.28, 68); },
+      tear:  function () { hiss(0.17, 1600, 0.8, 0.28, 'lowpass', 320); },
+      land:  function () { hiss(0.5, 800, 0.7, 0.22, 'lowpass', 180); },
+      gull:  function () {
+        tone(1250, 0.16, 'triangle', 0.07, 1750);
+        tone(1650, 0.2, 'triangle', 0.06, 1050, 0.19);
       },
+
+      // cada punto del mapa toca su nota: los cuatro forman una frase
+      blip: function (i) {
+        var scale = [523.25, 587.33, 659.25, 783.99];   // do re mi sol
+        var f = scale[(i || 0) % scale.length];
+        tone(f, 0.5, 'triangle', 0.17);
+        tone(f * 2, 0.2, 'sine', 0.05);
+      },
+
+      // turbina: entra al despegar y se va con el aterrizaje
+      engineOn: function () {
+        var c = live(); if (!c || engine) return;
+        var s = loopNoise(c);
+        var f = c.createBiquadFilter();
+        f.type = 'bandpass'; f.frequency.value = 380; f.Q.value = 0.9;
+        var g = c.createGain(); g.gain.value = 0.0001;
+        s.connect(f); f.connect(g); g.connect(master);
+        s.start();
+        g.gain.exponentialRampToValueAtTime(0.2, c.currentTime + 0.9);
+        f.frequency.linearRampToValueAtTime(900, c.currentTime + 2.4);
+        engine = { s: s, g: g };
+      },
+      engineOff: function () {
+        if (!engine || !ctx) return;
+        var e = engine, t = ctx.currentTime;
+        engine = null;
+        try {
+          e.g.gain.cancelScheduledValues(t);
+          e.g.gain.setValueAtTime(e.g.gain.value, t);
+          e.g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
+        } catch (err) {}
+        setTimeout(function () { try { e.s.stop(); } catch (err) {} }, 1100);
+      },
+
+      // obturador de cámara cuando una foto termina de revelarse
+      shutter: function () {
+        hiss(0.016, 2800, 6, 0.26);
+        hiss(0.03, 1200, 3, 0.18, 'bandpass', null, 0.055);
+        tone(240, 0.05, 'triangle', 0.12, 150, 0.055);
+      },
+
+      // sello de goma sobre el papel
+      rubber: function () {
+        hiss(0.05, 900, 1.2, 0.38, 'lowpass');
+        tone(120, 0.14, 'sine', 0.34, 70);
+        hiss(0.12, 2200, 1.5, 0.14, 'bandpass', 700, 0.02);
+      },
+
+      // la carta desdoblándose
+      unfold: function () {
+        for (var i = 0; i < 5; i++) {
+          hiss(0.06 + Math.random() * 0.05, 1800 + Math.random() * 1500,
+               2.5, 0.14, 'bandpass', null, i * 0.13 + Math.random() * 0.05);
+        }
+      },
+
+      // ocho compases muy simples, solo para la carta
+      theme: function () {
+        var seq = [220, 261.63, 329.63, 392, 440, 392, 329.63, 261.63];
+        for (var i = 0; i < seq.length; i++) {
+          tone(seq[i], 1.5, 'sine', 0.12, null, 0.2 + i * 0.42);
+        }
+        tone(110, 3.8, 'sine', 0.08, null, 0.2);
+      },
+
+      // segundero del reloj; fuerte solo en el último día
+      tick: function (strong) {
+        hiss(0.012, strong ? 2600 : 2000, 8, strong ? 0.14 : 0.05);
+      },
+
       reveal: function () {
         var notes = [220, 277.18, 329.63, 440];
         for (var i = 0; i < notes.length; i++) {
-          tone(notes[i], 1.9 - i * 0.15, 'sine', 0.12, null, i * 0.14);
+          tone(notes[i], 1.9 - i * 0.15, 'sine', 0.2, null, i * 0.14);
         }
-        hiss(0.9, 300, 0.6, 0.1, 'highpass', 3000);
+        hiss(0.9, 300, 0.6, 0.16, 'highpass', 3000);
       },
       stamp: function () {
-        hiss(0.28, 260, 0.9, 0.42, 'lowpass');
-        tone(92, 0.34, 'sine', 0.22, 54);
+        hiss(0.28, 260, 0.9, 0.55, 'lowpass');
+        tone(92, 0.34, 'sine', 0.34, 54);
       },
 
       /* ---------- ambiente ---------- */
@@ -297,12 +412,24 @@
         applyBed();
       },
 
+      // baja el ambiente sin cortarlo (pestaña en segundo plano)
+      duck: function (down) {
+        ducked = !!down;
+        if (!bed || !ctx) return;
+        var t = ctx.currentTime;
+        try {
+          bed.gain.gain.cancelScheduledValues(t);
+          bed.gain.gain.setValueAtTime(bed.gain.gain.value, t);
+          bed.gain.gain.linearRampToValueAtTime(down ? 0.15 : 1, t + 0.6);
+        } catch (e) {}
+      },
+
       isOn: function () { return on; },
       toggle: function () {
         on = !on;
         try { window.localStorage.setItem(KEY, on ? 'on' : 'off'); } catch (e) {}
         if (on) { boot(); api.wake(); }
-        else { killBed(bed, 0.5); bed = null; }
+        else { killBed(bed, 0.5); bed = null; api.engineOff(); }
         return on;
       },
       wake: function () {
@@ -323,11 +450,14 @@
       document.addEventListener(evts[k], api.wake, { passive: true });
     }
 
-    // al volver de otra pestaña el contexto puede quedar suspendido
     document.addEventListener('visibilitychange', function () {
-      if (!document.hidden) api.wake();
+      if (document.hidden) {
+        api.duck(true);
+      } else {
+        api.duck(false);
+        api.wake();
+      }
     });
-
 
     return api;
   })();
@@ -361,13 +491,20 @@
     }
   }
 
+  var lastShutter = 0;
+  function develop(el) {
+    el.classList.add('developed');
+    var now = Date.now();
+    if (now - lastShutter > 220) { lastShutter = now; audio.shutter(); }
+  }
+
   function onEnter(i) {
     // revelar fotos de la etapa
     $$('[data-develop]', stages[i]).forEach(function (el, k) {
-      setTimeout(function () { el.classList.add('developed'); }, 260 + k * 180);
+      setTimeout(function () { develop(el); }, 260 + k * 180);
     });
 
-    if (i === 2) setTimeout(flyRoute, 420);
+    if (i === 2) { audio.engineOn(); setTimeout(flyRoute, 420); }
     if (i === 3) setTimeout(litPins, 380);
     if (i === 4) setTimeout(revealDestination, 220);
   }
@@ -568,6 +705,7 @@
   function landed() {
     flightDone = true;
     audio.land();
+    audio.engineOff();
     var dest = $('.pt.dest');
     if (dest) dest.classList.add('live');
     checkStageBars(stages[2]);
@@ -683,7 +821,7 @@
     pins.forEach(function (pin, i) {
       setTimeout(function () {
         pin.classList.add('lit');
-        audio.blip();
+        audio.blip(i);
         if (items[i]) items[i].classList.add('lit');
         if (i === pins.length - 1 && btn) btn.disabled = false;
       }, i * step);
@@ -716,6 +854,7 @@
     });
     word.classList.add('in');
     audio.reveal();
+    setTimeout(audio.rubber, 900);
     audio.ambient('beach');
     if (reduced) return;
     // el confeti solo cuando la etapa ya está en pantalla y el nombre terminó de armarse
@@ -811,6 +950,17 @@
 
     startCountdown();
 
+    // el ambiente cambia según la sección que se esté leyendo; va aparte
+    // del bloque de animaciones porque no depende de reducir movimiento
+    if ('IntersectionObserver' in window) {
+      var aio = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting) audio.ambient(e.target.getAttribute('data-ambient'));
+        });
+      }, { threshold: 0.35 });
+      $$('#dossier [data-ambient]').forEach(function (el) { aio.observe(el); });
+    }
+
     // entrada por scroll
     var blocks = $$('#dossier section, .clock, .dossier-head');
     if ('IntersectionObserver' in window && !reduced) {
@@ -826,56 +976,102 @@
         entries.forEach(function (e) {
           if (e.isIntersecting) {
             var el = e.target;
-            setTimeout(function () { el.classList.add('developed'); }, 180);
+            setTimeout(function () { develop(el); }, 180);
             pio.unobserve(el);
           }
         });
       }, { threshold: .25 });
       $$('#dossier [data-develop]').forEach(function (el) { pio.observe(el); });
+
     } else {
       $$('#dossier [data-develop]').forEach(function (el) { el.classList.add('developed'); });
     }
   }
 
+  /* El reloj tiene tres vidas: cuenta atrás hasta el despegue, parte de
+     viaje mientras estamos allá, y tiempo transcurrido desde el regreso
+     para que la página siga diciendo algo dentro de diez años. */
+  var DESPEGUE = new Date('2026-11-24T06:30:00-05:00').getTime();
+  var REGRESO  = new Date('2026-11-28T14:30:00-05:00').getTime();
+
+  var DIAS_VIAJE = [
+    'Día 1 · Llegada y bahía al atardecer',
+    'Día 2 · Ciudad amurallada en chiva',
+    'Día 3 · Islas, club de playa',
+    'Día 4 · Día libre, sin instrucciones',
+    'Día 5 · Regreso a Bogotá'
+  ];
+
   function startCountdown() {
-    var target = new Date('2026-11-24T06:30:00-05:00').getTime();
     var d = $('#cd-d'), h = $('#cd-h'), m = $('#cd-m'), s = $('#cd-s');
-    var note = $('#clockNote');
-    var grid = $('.clock-grid');
+    var note  = $('#clockNote');
+    var title = $('#clockTitle');
+    var grid  = $('.clock-grid');
     var dayTile = d.parentNode;
     var NOTE_FAR = note.textContent;
 
-    function tick() {
-      var diff = target - Date.now();
-      if (diff <= 0) {
-        d.textContent = h.textContent = m.textContent = s.textContent = '00';
-        note.textContent = 'Operación en curso.';
-        clearInterval(timer);
-        return;
-      }
-      var secs = Math.floor(diff / 1000);
-      var days = Math.floor(secs / 86400);
+    // el segundero solo suena si el reloj está a la vista
+    var clockSeen = false;
+    var clockEl = $('.clock');
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(function (entries) {
+        clockSeen = entries[0].isIntersecting;
+      }, { threshold: 0.4 }).observe(clockEl);
+    }
 
-      // el último día la cuenta cambia de escala: se cae la casilla de días
+    function pintar(secs, ultimoDia) {
+      var days = Math.floor(secs / 86400);
       dayTile.hidden = days === 0;
       grid.classList.toggle('no-days', days === 0);
-      grid.classList.toggle('final', secs < 3600);
-
-      if (secs < 3600) note.textContent = 'Salida inminente · El Dorado';
-      else if (days === 0) note.textContent = 'Menos de un día. Empaca.';
-      else note.textContent = NOTE_FAR;
-
+      grid.classList.toggle('final', ultimoDia && secs < 3600);
       d.textContent = pad2(days);
       h.textContent = pad2(Math.floor(secs % 86400 / 3600));
       m.textContent = pad2(Math.floor(secs % 3600 / 60));
       s.textContent = pad2(secs % 60);
     }
+
+    function tick() {
+      var now = Date.now();
+
+      if (now < DESPEGUE) {
+        // ---------- antes: cuenta atrás ----------
+        var secs = Math.floor((DESPEGUE - now) / 1000);
+        var days = Math.floor(secs / 86400);
+        title.textContent = 'Tiempo restante para el despegue';
+        if (secs < 3600) note.textContent = 'Salida inminente · El Dorado';
+        else if (days === 0) note.textContent = 'Menos de un día. Empaca.';
+        else note.textContent = NOTE_FAR;
+        pintar(secs, true);
+        if (clockSeen) audio.tick(days === 0);
+
+      } else if (now < REGRESO) {
+        // ---------- durante: parte de viaje ----------
+        var dentro = Math.floor((now - DESPEGUE) / 1000);
+        var dia = Math.min(Math.floor(dentro / 86400) + 1, DIAS_VIAJE.length);
+        title.textContent = 'Operación en curso · día ' + dia + ' de 5';
+        note.textContent = DIAS_VIAJE[dia - 1];
+        grid.classList.remove('final');
+        pintar(dentro, false);
+        if (clockSeen) audio.tick(false);
+
+      } else {
+        // ---------- después: cuánto ha pasado ----------
+        var desde = Math.floor((now - REGRESO) / 1000);
+        title.textContent = 'Desde que volvimos de Cartagena';
+        note.textContent = 'Operación cerrada · fueron 5 días y 4 noches';
+        grid.classList.remove('final');
+        pintar(desde, false);
+      }
+    }
+
     tick();
-    var timer = setInterval(tick, 1000);
+    setInterval(tick, 1000);
   }
 
   $('#seal').addEventListener('click', function () {
     audio.stamp();
+    setTimeout(audio.unfold, 240);
+    setTimeout(audio.theme, 700);
     $('#sealWrap').classList.add('is-broken');
     $('#letter').hidden = false;
     setTimeout(function () { burst(90); }, 260);

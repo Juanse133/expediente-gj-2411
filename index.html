@@ -26,7 +26,7 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&display=swap"
     />
-    <link rel="stylesheet" href="assets/css/style.css?v=10" />
+    <link rel="stylesheet" href="assets/css/style.css?v=12" />
   </head>
   <body class="locked">
     <canvas id="confetti" aria-hidden="true"></canvas>
@@ -323,7 +323,7 @@
         </header>
 
         <div class="clock">
-          <span class="eyebrow">Tiempo restante para el despegue</span>
+          <span class="eyebrow" id="clockTitle">Tiempo restante para el despegue</span>
           <div class="clock-grid">
             <div class="tick"><b id="cd-d">—</b><span>Días</span></div>
             <div class="tick"><b id="cd-h">—</b><span>Horas</span></div>
@@ -335,7 +335,7 @@
           >
         </div>
 
-        <section>
+        <section data-ambient="beach">
           <div class="sec-head">
             <span class="eyebrow">Anexo A</span>
             <h2>Sujetos implicados</h2>
@@ -380,7 +380,7 @@
           </div>
         </section>
 
-        <section>
+        <section data-ambient="airport">
           <div class="sec-head">
             <span class="eyebrow">Anexo B · Evidencia</span>
             <h2>Traslados aéreos</h2>
@@ -465,7 +465,7 @@
           >
         </section>
 
-        <section>
+        <section data-ambient="beach">
           <div class="sec-head">
             <span class="eyebrow">Anexo C · Cartografía</span>
             <h2>El recorrido</h2>
@@ -519,7 +519,7 @@
           </div>
         </section>
 
-        <section>
+        <section data-ambient="street">
           <div class="sec-head">
             <span class="eyebrow">Anexo D · Cronograma</span>
             <h2>Movimientos programados</h2>
@@ -580,7 +580,7 @@
           </div>
         </section>
 
-        <section>
+        <section data-ambient="beach">
           <div class="sec-head">
             <span class="eyebrow">Anexo E</span>
             <h2>Recursos ya autorizados</h2>
@@ -600,7 +600,7 @@
           </ul>
         </section>
 
-        <section>
+        <section data-ambient="beach">
           <div class="sec-head">
             <span class="eyebrow">Anexo F · Preparativos</span>
             <h2>Antes de salir</h2>
@@ -648,7 +648,7 @@
           </div>
         </section>
 
-        <section>
+        <section data-ambient="beach">
           <div class="sec-head">
             <span class="eyebrow">Anexo G</span>
             <h2>Evidencia fotográfica</h2>
@@ -723,7 +723,7 @@
           </div>
         </section>
 
-        <section class="letter-sec">
+        <section data-ambient="beach" class="letter-sec">
           <div class="sec-head">
             <span class="eyebrow">Anexo H · Documento sellado</span>
             <h2>Solo para Laura</h2>
@@ -771,6 +771,6 @@
       </div>
     </main>
 
-    <script src="assets/js/app.js?v=10"></script>
+    <script src="assets/js/app.js?v=12"></script>
   </body>
 </html>
