@@ -1116,7 +1116,8 @@
     audio.wake();
     audio.ambient('mystery');
     boot.classList.add('is-gone');
-    setTimeout(function () { boot.hidden = true; }, 600);
+    // fuera del DOM, no solo invisible: así no puede superponerse a nada
+    setTimeout(function () { if (boot.parentNode) boot.parentNode.removeChild(boot); }, 700);
     runTerminal();
   }
 

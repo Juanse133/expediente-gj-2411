@@ -286,6 +286,8 @@ a.btn{display:inline-block;text-decoration:none}
 .boot span{animation:pulse 2.2s ease-in-out infinite}
 .boot:focus-visible{outline:1px solid var(--caribe);outline-offset:-6px}
 .boot.is-gone{opacity:0;pointer-events:none}
+/* display:flex le gana a [hidden] si no se dice lo contrario */
+.boot[hidden]{display:none}
 
 /* ---------- terminal ---------- */
 .terminal-wrap{
